@@ -1,0 +1,202 @@
+{
+  "app": "dev-fleet",
+  "fixture": "minimal",
+  "locale": "en-US",
+  "timezone": "UTC",
+  "provenance_note": "The isolated gateway served this repository's own copy of the app, installed from this checkout, trusted and enabled by capture.py's setup.",
+  "data_notes": [
+    "The checkout the page manages is fictional: capture/make_fixture.py builds a small git repository with the Kiro Crew checkout markers and four feature worktrees with made-up branch names and an example.invalid author, under the system temp directory. It has no remote and no GitHub pull requests, so no pull-request state is shown and Prune merged keeps every worktree: it removes only work it can prove shipped.",
+    "Each gateway waits 50 seconds after the app is turned on, before any picture and before the recording starts: the backend starts before the gateway has registered the app's in-gateway routes, so its first read of the live-target state fails and the page says the live state is unavailable until the next read, up to about 40 seconds later (PORTING.md, gap 10).",
+    "Pods are not provisioned on the capture host, so every feature row offers Provision and no pod runs; the README says what a provisioned pod adds."
+  ],
+  "init_storage": {
+    "mc-nav": "0"
+  },
+  "ready": "text=calendar-sync",
+  "forbid_text": [
+    "Loading...",
+    "Live state unavailable"
+  ],
+  "setup": [
+    {
+      "name": "install this repository",
+      "method": "POST",
+      "path": "/api/apps/install",
+      "body": {
+        "source": "{{app_root}}"
+      }
+    },
+    {
+      "name": "trust it (it runs its own code)",
+      "method": "POST",
+      "path": "/api/security/trusted-apps/dev-fleet"
+    },
+    {
+      "name": "turn the app on",
+      "method": "POST",
+      "path": "/api/apps/dev-fleet/enable"
+    },
+    {
+      "name": "retire the host's one-time startup intro",
+      "method": "POST",
+      "path": "/api/feature-videos/feedback",
+      "body": {
+        "id": "crewmates",
+        "status": "dismissed"
+      },
+      "optional": true
+    },
+    {
+      "wait_ms": 50000
+    }
+  ],
+  "screenshots": [
+    {
+      "name": "hero",
+      "path": "/apps/dev-fleet",
+      "themes": [
+        "light",
+        "dark"
+      ],
+      "ready_after": "text=release-notes",
+      "alt": "The Dev Fleet page managing a fictional checkout: the primary checkout it found, a notice that this dashboard runs from a different install, totals for running pods, worktrees and worktrees that need provisioning, and the worktree table with the main row (Pull+Build, Make live) and four feature worktrees, calendar-sync, dark-charts, login-timeout and release-notes, each not built yet with a Provision button"
+    },
+    {
+      "name": "use-case-detail",
+      "path": "/apps/dev-fleet",
+      "themes": [
+        "light"
+      ],
+      "steps": [
+        {
+          "click": "role=button[name='Expand'] >> nth=0"
+        },
+        {
+          "wait_ms": 1500
+        }
+      ],
+      "ready_after": "text=feat/calendar-sync",
+      "alt": "The calendar-sync row expanded under the table, showing its branch feat/calendar-sync, its disk use and a Remove button"
+    },
+    {
+      "name": "use-case-menu",
+      "path": "/apps/dev-fleet",
+      "themes": [
+        "light"
+      ],
+      "steps": [
+        {
+          "click": "role=button[name='More actions'] >> nth=1"
+        },
+        {
+          "wait_for": "role=menu"
+        }
+      ],
+      "alt": "The actions menu of the dark-charts worktree open over the table, offering Rebase onto base branch, Make live and QA + video"
+    },
+    {
+      "name": "use-case-prune",
+      "path": "/apps/dev-fleet",
+      "themes": [
+        "light"
+      ],
+      "steps": [
+        {
+          "click": "role=button[name='Prune merged']"
+        },
+        {
+          "wait_for": "text=Prune worktrees",
+          "timeout_ms": 30000
+        }
+      ],
+      "alt": "The Prune worktrees review keeping all four feature worktrees and saying why: three for an open pull request or unmerged commits, dark-charts for its untracked scratch.txt, each with a checkbox to force removal, and Cancel and Remove selected buttons"
+    }
+  ],
+  "walkthrough": {
+    "name": "walkthrough",
+    "theme": "light",
+    "path": "/apps/dev-fleet",
+    "ready": "text=release-notes",
+    "alt": "A walkthrough of Dev Fleet on a fictional checkout: the worktree table, the calendar-sync row expanded to show its branch, the dark-charts actions menu, and the Prune worktrees review, which keeps every worktree, cancelled without removing anything",
+    "steps": [
+      {
+        "caption": "Every worktree of your checkout, in one table"
+      },
+      {
+        "wait_ms": 2500
+      },
+      {
+        "caption": "Open a row to see what it adds"
+      },
+      {
+        "click": "role=button[name='Expand'] >> nth=0"
+      },
+      {
+        "wait_for": "text=feat/calendar-sync"
+      },
+      {
+        "wait_ms": 2500
+      },
+      {
+        "click": "role=button[name='Collapse'] >> nth=0"
+      },
+      {
+        "wait_ms": 600
+      },
+      {
+        "caption": "Each row has its own actions"
+      },
+      {
+        "click": "role=button[name='More actions'] >> nth=1"
+      },
+      {
+        "wait_for": "role=menu"
+      },
+      {
+        "wait_ms": 2500
+      },
+      {
+        "press": "body",
+        "key": "Escape"
+      },
+      {
+        "wait_ms": 500
+      },
+      {
+        "caption": "Prune merged reviews before it removes anything"
+      },
+      {
+        "click": "role=button[name='Prune merged']"
+      },
+      {
+        "wait_for": "text=Prune worktrees",
+        "timeout_ms": 30000
+      },
+      {
+        "wait_ms": 3000
+      },
+      {
+        "click": "role=dialog >> role=button[name='Cancel']"
+      },
+      {
+        "wait_ms": 800
+      },
+      {
+        "caption": "Nothing was removed"
+      },
+      {
+        "mouse_park": [
+          1300,
+          800
+        ]
+      },
+      {
+        "wait_ms": 2500
+      }
+    ],
+    "tail_ms": 1500
+  },
+  "settle_hidden": [
+    "[data-testid=fleet-live-state-unknown]"
+  ]
+}

@@ -1,0 +1,13 @@
+36d03683921830da01152855368ab821d962862475f22158985289917aab4dd4  ./feature-demo-recording/references/brand.example.json
+199fe7d3d052e6c9ebe705ed35d29a7de6ed04fb507ed4a4c34f5bededd74c22  ./feature-demo-recording/references/compose.py
+e9ed67a017205758410eaf23744b897e9292cfbd86a42b6fa9b16eda122fcd50  ./feature-demo-recording/references/deps.py
+ec3609c15cd7c859263eeda8a1cef8fdb1a36c9e62da9df78ead6e637d1da57b  ./feature-demo-recording/references/narrate.py
+8eedb34d6c795aa5f546f0aa10e4983b2e77ebb0231d1936a44dbca970c49444  ./feature-demo-recording/references/_pathcheck.py
+14255237d69fca747909f0e6915c293a855802ed0e0f3ceb2b137666a4108e93  ./feature-demo-recording/references/record_template.py
+85f751ec3877340af0966b2b869d9bcec43cff940c5590c5a830725bfcb3ac52  ./feature-demo-recording/references/script.example.json
+d88fa02c6522664cca3227fa054063b36a5c5e562f52bdd56fe08c7a2cb45605  ./feature-demo-recording/references/_toolpath.py
+ea604ed9bd8c7870aa75209a3c589353e69cbc3ddaee26141c534ccd1d5cb27d  ./feature-demo-recording/references/verify_align.py
+81e4b2fe479df34d666d50f9c77e0dca24f944c1c64c4a53fa36902787d4cc10  ./feature-demo-recording/SKILL.md
+dfc6c5b0b01a0e511c7716d902e38b16cd63252eb6191b2f383d022f25489735  ./pod-e2e/scripts/pod-e2e.sh
+ad7168c97d75bb02dde29f665a666ccb8a1ca67d00e2f726044adf228ef98b0b  ./pod-e2e/scripts/pod-playwright.py
+287e35a72e6dd2272c13286d13f1d61aa042722edd695ef5da6592e8ae194aed  ./pod-e2e/SKILL.md

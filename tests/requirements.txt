@@ -1,0 +1,18 @@
+# Test-only dependencies, pinned. Deliberately NOT at the repository root: a root
+# requirements.txt makes a Kiro Crew registry install run pip into the gateway's
+# interpreter, and adoption refuses a tree that needs a build. At runtime the app
+# needs only the stdlib and aiohttp, which the gateway already provides, and the
+# gateway itself.
+#
+# Kiro Crew is a TEST dependency here, pinned to one commit of its public source:
+# the commit this app was ported from. The backend drives the host's sandbox, its
+# pod runtime, its service managers, its executors and its config loader, and the
+# suite (Kiro Crew's own Dev Fleet tests, moved here) exercises those real
+# collaborators the way it did in Kiro Crew.
+aiohttp==3.14.3
+pytest==9.0.3
+pytest-asyncio==0.21.2
+pytest-timeout==2.2.0
+pytest-xdist==3.5.0
+flake8==7.5.0
+kirocrew @ https://github.com/kirodotdev/KiroCrew/archive/6d07df11cfb64f4c3fda0466165c7a0ba3efe748.tar.gz

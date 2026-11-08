@@ -1,0 +1,88 @@
+{
+  "app": "dev-fleet",
+  "captured_at": "2026-11-08T10:22:13Z",
+  "app_commit": "the uncommitted tree that became this repository's first commit",
+  "kirocrew_commit": "6d07df11cfb64f4c3fda0466165c7a0ba3efe748",
+  "kirocrew_tree_dirty": true,
+  "gateway": "isolated temporary home, approval=reads; a freshly seeded gateway for the stub screenshots, one for the live ones and one for the walkthrough",
+  "data": "fictional, seeded through the app's HTTP API (capture/scenes.json)",
+  "agent_backend": {
+    "live": [],
+    "live_model": null,
+    "stub": "Kiro Crew's offline stub ACP backend (capture/stub_backend.py) for every other scene; no chat reply is shown from it",
+    "credit_reading": "the browser answers the top bar's credit readout (/api/sessions/usage) with \"no reading\", so no account balance or email can be shown"
+  },
+  "note": "The isolated gateway served this repository's own copy of the app: capture.py's setup installed it from this checkout (POST /api/apps/install), trusted it and enabled it, and every picture shows its committed bundle (ui/dist/index.mjs), its backend and its in-gateway routes. Kiro Crew still ships a built-in dev-fleet and refuses a second install under the same name, so the Kiro Crew tree the capture ran on is the port commit with only the built-in copy removed (src/kiro_crew/apps/builtins/dev_fleet and its BUILTIN_NAMES row); kirocrew_tree_dirty records that. KIROCREW_PROJECT_DIR named the fictional checkout, and HOME was a throwaway directory so no pod state of the capture host shows.",
+  "data_notes": [
+    "The checkout the page manages is fictional: capture/make_fixture.py builds a small git repository with the Kiro Crew checkout markers and four feature worktrees with made-up branch names and an example.invalid author, under the system temp directory. It has no remote and no GitHub pull requests, so no pull-request state is shown and Prune merged keeps every worktree: it removes only work it can prove shipped.",
+    "Each gateway waits 50 seconds after the app is turned on, before any picture and before the recording starts: the backend starts before the gateway has registered the app's in-gateway routes, so its first read of the live-target state fails and the page says the live state is unavailable until the next read, up to about 40 seconds later (PORTING.md, gap 10).",
+    "Pods are not provisioned on the capture host, so every feature row offers Provision and no pod runs; the README says what a provisioned pod adds."
+  ],
+  "viewport": {
+    "width": 1440,
+    "height": 900
+  },
+  "device_scale": 2,
+  "screenshots": [
+    {
+      "file": "hero-dark.png",
+      "name": "hero",
+      "theme": "dark",
+      "bytes": 326325,
+      "width": 1600,
+      "height": 1000,
+      "alt": "The Dev Fleet page managing a fictional checkout: the primary checkout it found, a notice that this dashboard runs from a different install, totals for running pods, worktrees and worktrees that need provisioning, and the worktree table with the main row (Pull+Build, Make live) and four feature worktrees, calendar-sync, dark-charts, login-timeout and release-notes, each not built yet with a Provision button"
+    },
+    {
+      "file": "hero-light.png",
+      "name": "hero",
+      "theme": "light",
+      "bytes": 309274,
+      "width": 1600,
+      "height": 1000,
+      "alt": "The Dev Fleet page managing a fictional checkout: the primary checkout it found, a notice that this dashboard runs from a different install, totals for running pods, worktrees and worktrees that need provisioning, and the worktree table with the main row (Pull+Build, Make live) and four feature worktrees, calendar-sync, dark-charts, login-timeout and release-notes, each not built yet with a Provision button"
+    },
+    {
+      "file": "use-case-detail-light.png",
+      "name": "use-case-detail",
+      "theme": "light",
+      "bytes": 318316,
+      "width": 1600,
+      "height": 1000,
+      "alt": "The calendar-sync row expanded under the table, showing its branch feat/calendar-sync, its disk use and a Remove button"
+    },
+    {
+      "file": "use-case-menu-light.png",
+      "name": "use-case-menu",
+      "theme": "light",
+      "bytes": 318301,
+      "width": 1600,
+      "height": 1000,
+      "alt": "The actions menu of the dark-charts worktree open over the table, offering Rebase onto base branch, Make live and QA + video"
+    },
+    {
+      "file": "use-case-prune-light.png",
+      "name": "use-case-prune",
+      "theme": "light",
+      "bytes": 181777,
+      "width": 1600,
+      "height": 1000,
+      "alt": "The Prune worktrees review keeping all four feature worktrees and saying why: three for an open pull request or unmerged commits, dark-charts for its untracked scratch.txt, each with a checkbox to force removal, and Cancel and Remove selected buttons"
+    }
+  ],
+  "walkthrough": {
+    "shortened_waits_s": [],
+    "mp4": {
+      "file": "walkthrough.mp4",
+      "bytes": 389790
+    },
+    "gif": {
+      "file": "walkthrough.gif",
+      "bytes": 2757807,
+      "width": 960,
+      "fps": 10
+    },
+    "theme": "light",
+    "alt": "A walkthrough of Dev Fleet on a fictional checkout: the worktree table, the calendar-sync row expanded to show its branch, the dark-charts actions menu, and the Prune worktrees review, which keeps every worktree, cancelled without removing anything"
+  }
+}
