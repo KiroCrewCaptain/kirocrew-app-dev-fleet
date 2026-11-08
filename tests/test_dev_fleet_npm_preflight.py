@@ -18,6 +18,8 @@ from pathlib import Path
 
 import pytest
 
+import kiro_crew
+
 from backend import npm_preflight as np
 
 #: ``EDQUOT`` is not defined on every platform (Windows' CRT omits it), so it is
@@ -627,7 +629,7 @@ class TestScratchLivesOnTheRepoFilesystem:
         Asked of GIT on a ``mkdtemp``-shaped name, not by comparing rule text: a
         rule that lost its trailing ``*`` still starts with the prefix.
         """
-        root = Path(np.__file__).resolve().parents[5]
+        root = Path(kiro_crew.__file__).resolve().parents[2]  # the managed Kiro Crew checkout
         if not (root / ".git").exists():
             pytest.skip("not a git checkout")
         git = _real_git(monkeypatch)

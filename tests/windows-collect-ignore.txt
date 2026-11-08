@@ -1,0 +1,18 @@
+# Test files NOT collected on Windows -- one bare filename per line. Blank lines
+# and #-comments are ignored. These are the Dev Fleet entries of Kiro Crew's own
+# test/windows-collect-ignore.txt, which these suites carried there: they exercise
+# POSIX-only app-runner behaviour, and several fail at import or fixture time on
+# win32, which a skip marker cannot prevent. tests/conftest.py reads this file.
+test_dev_fleet_app_context.py      # POSIX app-runner assumptions
+test_dev_fleet_app_fleet_cache.py  # POSIX app-runner assumptions
+test_dev_fleet_app_foreground.py   # POSIX app-runner assumptions
+test_dev_fleet_app_guards.py       # POSIX app-runner assumptions
+test_dev_fleet_app_make_live_cutover.py # POSIX app-runner assumptions
+test_dev_fleet_app_make_live.py    # POSIX app-runner assumptions
+test_dev_fleet_app_prune.py        # POSIX app-runner assumptions
+test_dev_fleet_app_pull_build.py   # POSIX app-runner assumptions
+test_dev_fleet_app.py              # POSIX app-runner assumptions
+test_dev_fleet_app_sync.py         # POSIX app-runner assumptions
+test_dev_fleet_app_teardown.py     # POSIX app-runner assumptions
+test_dev_fleet_app_trusted_helpers.py # POSIX app-runner assumptions
+test_dev_fleet_app_worktrees.py    # POSIX app-runner assumptions

@@ -15,6 +15,8 @@ from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+
+import kiro_crew
 from dev_fleet_app_helpers import _reset_make_live_committed_latch  # noqa: F401 - fixture
 from dev_fleet_app_helpers import _reset_shutdown_admission_state  # noqa: F401 - fixture
 from dev_fleet_app_helpers import _sweep_staged_sync_tempdirs  # noqa: F401 - fixture
@@ -738,14 +740,14 @@ def test_serving_install_reason_is_silent_for_a_source_install():
     Asserted against the REAL package location rather than a fixture, so the
     check cannot pass by accident on a layout that does not exist.
     """
-    pkg = Path(mod.__file__).resolve().parents[3]
+    pkg = Path(kiro_crew.__file__).resolve().parent  # the serving package
 
     assert mod._serving_install_reason_sync(str(pkg.parents[1]), ()) is None
 
 
 def test_serving_install_reason_is_silent_when_the_checkout_is_the_package_dir():
     """A managed path that IS the serving package is not a mismatch either."""
-    pkg = Path(mod.__file__).resolve().parents[3]
+    pkg = Path(kiro_crew.__file__).resolve().parent  # the serving package
 
     assert mod._serving_install_reason_sync(str(pkg), ()) is None
 
@@ -755,7 +757,7 @@ def test_serving_install_reason_is_silent_after_make_live_onto_a_worktree(tmp_pa
     checkout. Warning about a state this app just created — and already labels
     via `is_live` — would train the user to dismiss the takeover signal.
     """
-    pkg = Path(mod.__file__).resolve().parents[3]
+    pkg = Path(kiro_crew.__file__).resolve().parent  # the serving package
     serving_checkout = str(pkg.parents[1])
 
     reason = mod._serving_install_reason_sync(
@@ -812,7 +814,7 @@ def test_serving_install_reason_accepts_a_linked_worktree_dot_git_file(tmp_path)
 
 def test_serving_install_reason_skips_unresolvable_entries(tmp_path):
     """A bad path must be skipped, not abort the scan or crash the payload."""
-    pkg = Path(mod.__file__).resolve().parents[3]
+    pkg = Path(kiro_crew.__file__).resolve().parent  # the serving package
 
     # The poison entry comes FIRST; the healthy one after it must still be seen.
     assert mod._serving_install_reason_sync("\x00not-a-path", (str(pkg.parents[1]),)) is None

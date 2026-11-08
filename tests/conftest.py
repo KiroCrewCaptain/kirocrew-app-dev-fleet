@@ -76,6 +76,36 @@ def pytest_unconfigure(config: pytest.Config) -> None:
     shutil.rmtree(_SESSION_HOME, ignore_errors=True)
 
 
+@pytest.fixture(autouse=True, scope="session")
+def _per_run_temp_base(tmp_path_factory: pytest.TempPathFactory) -> Iterator[Path]:
+    """Give each pytest process (each xdist worker) its own temp root.
+
+    Kiro Crew's rootdir conftest does the same. The sync tests stage snapshots
+    under the temp root and ``_sweep_staged_sync_tempdirs`` removes the ones a
+    test left behind; with one shared root a worker's sweep deletes another
+    worker's staging mid-write. pytest's ``basetemp`` is resolved first so it
+    stays outside this root, which is removed at the end.
+    """
+    tmp_path_factory.getbasetemp()
+    previous_tempdir = tempfile.tempdir
+    names = ("TMPDIR", "TEMP", "TMP")
+    previous_env = {name: os.environ.get(name) for name in names}
+    base = Path(tempfile.mkdtemp(prefix=f"kc-df-{os.getpid()}-"))
+    tempfile.tempdir = str(base)
+    for name in names:
+        os.environ[name] = str(base)
+    try:
+        yield base
+    finally:
+        tempfile.tempdir = previous_tempdir
+        for name, value in previous_env.items():
+            if value is None:
+                os.environ.pop(name, None)
+            else:
+                os.environ[name] = value
+        shutil.rmtree(base, ignore_errors=True)
+
+
 @pytest.fixture
 def _floor_monkeypatch() -> Iterator[pytest.MonkeyPatch]:
     """The floor's OWN ``MonkeyPatch``, never the shared ``monkeypatch``.
@@ -220,3 +250,20 @@ def _no_developer_overrides(_floor_monkeypatch: pytest.MonkeyPatch) -> None:
         "no_proxy",
     ):
         _floor_monkeypatch.delenv(key, raising=False)
+
+
+_WINDOWS_IGNORED = frozenset(
+    name
+    for name in (
+        line.split("#", 1)[0].strip()
+        for line in (TESTS / "windows-collect-ignore.txt").read_text(encoding="utf-8").splitlines()
+    )
+    if name
+)
+
+
+def pytest_ignore_collect(collection_path: Path, config: pytest.Config) -> bool | None:
+    """On Windows, skip the files ``windows-collect-ignore.txt`` lists, as Kiro Crew does."""
+    if sys.platform == "win32" and collection_path.name in _WINDOWS_IGNORED:
+        return True
+    return None

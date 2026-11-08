@@ -12,6 +12,8 @@ import sys
 from pathlib import Path
 
 import pytest
+
+import kiro_crew
 from dev_fleet_app_helpers import _reset_make_live_committed_latch  # noqa: F401 - fixture
 from dev_fleet_app_helpers import _reset_shutdown_admission_state  # noqa: F401 - fixture
 from dev_fleet_app_helpers import _sweep_staged_sync_tempdirs  # noqa: F401 - fixture
@@ -283,7 +285,8 @@ def test_the_frontend_declares_no_resolution_input_the_probe_cannot_mirror():
     so ``workspaces`` or ``file:``/``link:`` specifiers (paths absent from the
     scratch dir) would block every Pull + Build. Fix npm_preflight, not this test.
     """
-    root = Path(__file__).resolve().parents[1]
+    # The Kiro Crew checkout the suite runs against (this test sat in its test/).
+    root = Path(kiro_crew.__file__).resolve().parents[2]
     pkg_path = root / "website" / "package.json"
     if not pkg_path.is_file():  # editions ship without the frontend half
         pytest.skip("no frontend half in this checkout")
