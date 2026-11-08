@@ -108,7 +108,7 @@ for `dev-fleet` today, whatever this tree holds.
    release that moves one of these breaks the app (it fails to start; it never runs
    with a check skipped). Whether Kiro Crew publishes a backend SDK for spawned app
    processes is an open owner question, so this copy does not invent a bridge.
-   `tests/requirements.txt` pins Kiro Crew at the port commit for the suite.
+   The suite runs against a Kiro Crew source checkout at the port commit (`tests/kirocrew-commit.txt`; CI clones it and installs it editable), as it ran inside Kiro Crew.
 5. **Execution trust.** A built-in's spawned backend and hook routes are admitted
    without a grant (`apps/backend.py:521`, `is_builtin_app`). This copy runs only
    when the operator trusts it; for an existing user, adoption writes that grant

@@ -109,7 +109,6 @@ async def test_run_after_snapshot_is_refused():
 
     async def instrumented_cleanup(app):
         """Cleanup that signals after the critical section, then waits."""
-        global _cleanup_inner_called  # noqa: F821
         async with runtime._SHUTDOWN_ADMISSION_LOCK:
             runtime._SHUTDOWN_IN_PROGRESS = True
             _snapshot = list(runtime._ACTIVE_RUNS.items())

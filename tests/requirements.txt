@@ -4,15 +4,14 @@
 # needs only the stdlib and aiohttp, which the gateway already provides, and the
 # gateway itself.
 #
-# Kiro Crew is a TEST dependency here, pinned to one commit of its public source:
-# the commit this app was ported from. The backend drives the host's sandbox, its
-# pod runtime, its service managers, its executors and its config loader, and the
-# suite (Kiro Crew's own Dev Fleet tests, moved here) exercises those real
-# collaborators the way it did in Kiro Crew.
+# Kiro Crew itself is a TEST dependency too, but not listed here: the suite (Kiro
+# Crew's own Dev Fleet tests, moved here) runs against a Kiro Crew SOURCE CHECKOUT,
+# as it did in Kiro Crew, because the app manages a checkout and several tests
+# discover the one the running code comes from. CI clones Kiro Crew at the commit
+# in tests/kirocrew-commit.txt and installs it editable (.github/workflows/ci.yml).
 aiohttp==3.14.3
 pytest==9.0.3
 pytest-asyncio==0.21.2
 pytest-timeout==2.2.0
 pytest-xdist==3.5.0
 flake8==7.5.0
-kirocrew @ https://github.com/kirodotdev/KiroCrew/archive/6d07df11cfb64f4c3fda0466165c7a0ba3efe748.tar.gz

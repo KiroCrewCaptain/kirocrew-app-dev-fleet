@@ -47,6 +47,18 @@ jobs:
       - name: Install pinned test dependencies
         run: python -m pip install -r tests/requirements.txt
 
+      # The suite runs against a Kiro Crew source checkout, as it did inside Kiro
+      # Crew: the app manages a checkout, and several tests discover the one the
+      # running code comes from. Cloned at the pinned commit, installed editable.
+      - name: Install Kiro Crew from a checkout at the pinned commit
+        shell: bash
+        run: |
+          set -euo pipefail
+          commit="$(tr -d '[:space:]' < tests/kirocrew-commit.txt)"
+          git clone --quiet --filter=blob:none --no-checkout https://github.com/kirodotdev/KiroCrew "$RUNNER_TEMP/KiroCrew"
+          git -C "$RUNNER_TEMP/KiroCrew" -c advice.detachedHead=false checkout --quiet "$commit"
+          python -m pip install -e "$RUNNER_TEMP/KiroCrew"
+
       - name: Validate app.json is JSON
         run: python -c "import json; json.load(open('app.json', encoding='utf-8'))"
 

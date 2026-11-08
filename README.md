@@ -176,7 +176,11 @@ still missing.
 ### Tests
 
 ```bash
-python -m pip install -r tests/requirements.txt   # includes Kiro Crew, pinned
+python -m pip install -r tests/requirements.txt
+# A Kiro Crew source checkout at the pinned commit, installed editable:
+git clone https://github.com/kirodotdev/KiroCrew ../KiroCrew
+git -C ../KiroCrew checkout "$(cat tests/kirocrew-commit.txt)"
+python -m pip install -e ../KiroCrew
 python -m pytest -n 4 --dist loadgroup
 python -m flake8 backend tests skills capture
 
@@ -187,7 +191,9 @@ npm test
 npm run build   # rewrites ui/dist/index.mjs; CI fails if it differs from the commit
 ```
 
-The Python suite is Kiro Crew's own Dev Fleet suite. It never starts, stops or
+The Python suite is Kiro Crew's own Dev Fleet suite, and like there it runs
+against a Kiro Crew source checkout (several tests discover the checkout the
+running code comes from). It never starts, stops or
 reconfigures a real service and runs without your systemd user session
 (`tests/host_service_floor.py`).
 
