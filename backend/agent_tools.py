@@ -15,10 +15,12 @@ the answer the model reads exactly as the core tool these replaced did. The verb
 response is first read the way the core's gateway client read it (a refusal becomes
 ``{"error", "code"}`` with its message scrubbed), so a refusal reads the same too.
 
-The answer is ``{"text": ...}`` and the tools are declared ``result: "text"``: the
-token a pod start returns is the deliverable, so it is the one string that is NOT
-redacted (it is a credential for that pod's own gateway, not the live one). Every
-other part of a reply is scrubbed here, where the core tool scrubbed it.
+The tools are declared ``result: "text"``, and each answer is the text the core tool
+rendered, scrubbed here where the core tool scrubbed it. The core redacts it again as
+it relays it. The token a pod start returns is the deliverable, so a pod start's answer
+names it as its ``credential`` (:func:`_answer`): the core keeps that one string
+verbatim and redacts the rest. It is a credential for that pod's own gateway, not the
+live one.
 """
 
 from __future__ import annotations
@@ -86,6 +88,17 @@ def _pod_failure(payload: dict[str, Any], verb: str) -> str | None:
     return None
 
 
+def _answer(text: str, credential: str = "") -> dict[str, Any]:
+    """The wire answer for *text*: ``{"text": <str>}``, or the text cut at *credential*.
+
+    A *credential* the text carries is named so the core keeps it verbatim:
+    ``{"text": [<the pieces around it>], "credential": <it>}``.
+    """
+    if credential and credential in text:
+        return {"text": text.split(credential), "credential": credential}
+    return {"text": text}
+
+
 def _positive_int(value: object) -> TypeGuard[int]:
     """True for a real positive int; a bool, a float or a numeric string is not one."""
     return isinstance(value, int) and not isinstance(value, bool) and value > 0
@@ -122,16 +135,16 @@ def _pod_limit_body(args: dict[str, Any]) -> dict[str, str]:
     return {k: args[k] for k in ("memory", "cpu") if args.get(k)}
 
 
-def _pod_start_reply(args: dict[str, Any], _pu_resp: dict[str, Any], verb: str) -> str:
-    """The prose handle for a pod that ``up`` or ``restart`` brought up."""
+def _pod_start_reply(args: dict[str, Any], _pu_resp: dict[str, Any], verb: str) -> dict[str, Any]:
+    """The answer for a pod that ``up`` or ``restart`` brought up: its prose handle."""
     _pu_worktree = args["worktree"]
     _pu_err = _pod_failure(_pu_resp, f"pod {verb} {_pu_worktree!r}")
     if _pu_err:
-        return _pu_err
+        return _answer(_pu_err)
     # The token is the DELIVERABLE, so it is the one string here that must survive
     # verbatim -- redacting it would return a handle that cannot be used. Scope is
     # what makes that safe: it is a credential for this pod's own gateway, not the
-    # live one. Everything else in the payload is echoed as the route sent it.
+    # live one. The answer names it, so the core redacts everything else.
     _pu_port = _pu_resp.get("port")
     _pu_base = _pu_resp.get("base_url") or (f"http://127.0.0.1:{_pu_port}" if _pu_port else "")
     _pu_token = _pu_resp.get("token") or ""
@@ -160,58 +173,60 @@ def _pod_start_reply(args: dict[str, Any], _pu_resp: dict[str, Any], verb: str) 
             "pod it just started; check `pod_status` before trusting the port)"
         )
     _pu_lines.append(f"Stop it with pod_down when you are done: {_pu_worktree}")
-    return "\n".join(_pu_lines)
+    return _answer("\n".join(_pu_lines), str(_pu_token))
 
 
-async def pod_up(args: dict[str, Any]) -> str:
+async def pod_up(args: dict[str, Any]) -> dict[str, Any]:
     resp = await agent_pod_api.pod_up_response(
         {"worktree": args["worktree"], **_pod_limit_body(args)}
     )
     return _pod_start_reply(args, _client_view(resp), "up")
 
 
-async def pod_restart(args: dict[str, Any]) -> str:
+async def pod_restart(args: dict[str, Any]) -> dict[str, Any]:
     resp = await agent_pod_api.pod_restart_response(
         {"worktree": args["worktree"], **_pod_limit_body(args)}
     )
     return _pod_start_reply(args, _client_view(resp), "restart")
 
 
-async def pod_down(args: dict[str, Any]) -> str:
+async def pod_down(args: dict[str, Any]) -> dict[str, Any]:
     _pd_worktree = args["worktree"]
     resp = await agent_pod_api.pod_down_response({"worktree": _pd_worktree})
     _pd_err = _pod_failure(_client_view(resp), f"pod down {_pd_worktree!r}")
     if _pd_err:
-        return _pd_err
-    return f"Pod `{_pd_worktree}` is stopped and its data directory reclaimed."
+        return _answer(_pd_err)
+    return _answer(f"Pod `{_pd_worktree}` is stopped and its data directory reclaimed.")
 
 
-async def pod_status(args: dict[str, Any]) -> str:
+async def pod_status(args: dict[str, Any]) -> dict[str, Any]:
     _ps_worktree = args["worktree"]
     _ps_resp = _client_view(await agent_pod_api.pod_status_response(_ps_worktree))
     _ps_err = _pod_failure(_ps_resp, f"pod status {_ps_worktree!r}")
     if _ps_err:
-        return _ps_err
+        return _answer(_ps_err)
     _ps_limits = (
         f" memory={_ps_resp.get('memory')} cpu={_ps_resp.get('cpu')}"
         if _ps_resp.get("memory") or _ps_resp.get("cpu")
         else ""
     )
-    return redact(
-        f"Pod `{_ps_resp.get('name') or _ps_worktree}`: "
-        f"{_ps_resp.get('status') or 'unknown'} "
-        f"port={_ps_resp.get('port')} health={_ps_resp.get('health')}{_ps_limits}"
+    return _answer(
+        redact(
+            f"Pod `{_ps_resp.get('name') or _ps_worktree}`: "
+            f"{_ps_resp.get('status') or 'unknown'} "
+            f"port={_ps_resp.get('port')} health={_ps_resp.get('health')}{_ps_limits}"
+        )
     )
 
 
-async def pod_ls(args: dict[str, Any]) -> str:
+async def pod_ls(args: dict[str, Any]) -> dict[str, Any]:
     _pl_resp = _client_view(await agent_pod_api.pod_list_response())
     _pl_err = _pod_failure(_pl_resp, "pod ls")
     if _pl_err:
-        return _pl_err
+        return _answer(_pl_err)
     _pl_pods = _pl_resp.get("pods") or []
     if not _pl_pods:
-        return "No pods are active on this host."
+        return _answer("No pods are active on this host.")
     _pl_lines = [f"{len(_pl_pods)} pod(s) active:"]
     for _pl_row in _pl_pods:
         if not isinstance(_pl_row, dict):
@@ -225,7 +240,7 @@ async def pod_ls(args: dict[str, Any]) -> str:
                 else ""
             )
         )
-    return redact("\n".join(_pl_lines))
+    return _answer(redact("\n".join(_pl_lines)))
 
 
 #: The verbs ``app.json`` declares, by tool name.
@@ -255,7 +270,7 @@ async def handle_agent_tool(request: web.Request) -> web.Response:
     the gateway's ``/api/app-tools/call``. The caller gate is the pod routes' own
     (local origin plus ``internal_auth``), so a dashboard cookie that reaches this
     path directly is refused. Every outcome a tool has, a refusal included, is its
-    text, answered as ``{"text": ...}``.
+    text, answered as :func:`_answer` shapes it.
     """
     # Read the body as cached bytes, never through ``can_read_body``: the forwarding
     # handler already read this request's payload, which leaves it at EOF.
@@ -282,5 +297,5 @@ async def handle_agent_tool(request: web.Request) -> web.Response:
         worktree = args.get("worktree")
         target = f" {worktree!r}" if isinstance(worktree, str) else ""
         text = _pod_failure(_client_view(refusal), f"{_VERBS[tool]}{target}") or ""
-        return web.json_response({"text": text})
-    return web.json_response({"text": await verb(args)})
+        return web.json_response(_answer(text))
+    return web.json_response(await verb(args))

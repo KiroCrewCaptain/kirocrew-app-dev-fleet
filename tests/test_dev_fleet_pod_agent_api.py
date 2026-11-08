@@ -40,6 +40,19 @@ _NEW_HOST = pytest.mark.skipif(
 )
 
 
+def _host_keeps_a_named_credential() -> bool:
+    """Whether the Kiro Crew under test relays a text answer's named ``credential`` verbatim."""
+    from kiro_crew.mcp_tools import app_tools
+
+    return hasattr(app_tools, "_is_credential")
+
+
+_CREDENTIAL_HOST = pytest.mark.skipif(
+    not _host_keeps_a_named_credential(),
+    reason="the pinned Kiro Crew predates the text answer's named credential",
+)
+
+
 def _manifest() -> dict[str, Any]:
     from pathlib import Path
 
@@ -511,15 +524,92 @@ async def test_pod_up_tool_returns_the_token_verbatim(monkeypatch: pytest.Monkey
         },
         calls=calls,
     )
-    out = await agent_tools.pod_up({"worktree": "kc-wt-1"})
+    out = _text(await agent_tools.pod_up({"worktree": "kc-wt-1"}))
     assert "tok-abc123" in out
     assert "http://127.0.0.1:7913" in out
     assert "open: http://127.0.0.1:7913/?token=tok-abc123" in out.splitlines()
     assert calls == [({"worktree": "kc-wt-1"},)]
 
 
+def _mint_link_token() -> str:
+    """A link token minted the way a pod mints one: a 2h session."""
+    from kiro_crew.dashboard.token_auth import generate_token
+
+    return generate_token("local-app", ttl_seconds=7200, register_nonce=False)
+
+
+def _text(answer: dict[str, Any]) -> str:
+    """The text a tool's answer carries, its credential put back where it stands."""
+    text = answer["text"]
+    return answer["credential"].join(text) if "credential" in answer else text
+
+
 def _token_line(out: str) -> str:
     return next(line for line in out.splitlines() if line.startswith("token:"))
+
+
+@pytest.mark.asyncio
+async def test_a_pod_start_names_its_token_as_the_answers_credential(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The token is cut out of the text, so the core redacts every other character."""
+    token = "tok-" + "a" * 40
+    _verb(monkeypatch, "pod_up_response", {"ok": True, "port": 7913, "token": token})
+    answer = await agent_tools.pod_up({"worktree": "kc-wt-1"})
+    assert answer["credential"] == token
+    assert len(answer["text"]) == 3
+    assert not any(token in piece for piece in answer["text"])
+
+
+@_CREDENTIAL_HOST
+def test_the_core_relays_a_pod_up_reply_byte_for_byte() -> None:
+    """Through the core's real redaction, the agent reads what the core tool returned.
+
+    A real link token is what the redactor would otherwise rewrite (``token=...`` and
+    the token itself), so the reply is built around a minted one.
+    """
+    from kiro_crew.mcp_tools import app_tools
+
+    token = _mint_link_token()
+    resp = {
+        "ok": True,
+        "port": 7913,
+        "base_url": "http://127.0.0.1:7913",
+        "checkout": "/home/u/clone-a/kc-wt-1",
+        "memory": "4G",
+        "cpu": "200%",
+        "token": token,
+        "link_ttl_secs": 300,
+        "session_ttl_secs": 7200,
+    }
+    answer = agent_tools._pod_start_reply({"worktree": "kc-wt-1"}, resp, "up")
+    assert app_tools._text_answer("pod_up", answer) == (
+        "Pod `kc-wt-1` is up on port 7913.\n"
+        "base_url: http://127.0.0.1:7913\n"
+        "checkout: /home/u/clone-a/kc-wt-1\n"
+        "limits: memory=4G cpu=200%\n"
+        f"token: {token}  (use within 5 min; the session it opens lasts 2h)\n"
+        f"open: http://127.0.0.1:7913/?token={token}\n"
+        "Past its window the pod refuses the token as expired; call pod_up "
+        "again (the pod keeps running) for a fresh one.\n"
+        "Stop it with pod_down when you are done: kc-wt-1"
+    )
+
+
+@_CREDENTIAL_HOST
+@pytest.mark.parametrize(
+    "text",
+    [
+        "Pod `kc-wt-1`: up port=7913 health=200 memory=4G cpu=200%",
+        "2 pod(s) active:\n  kc-wt-1  port=7913 health=200\n  kc-wt-2  port=7940 health=0",
+        "Pod `kc-wt-1` is stopped and its data directory reclaimed.",
+        "Error: pod up 'kc-wt-1' failed [pod_up_failed]: no built dist",
+    ],
+)
+def test_the_core_relays_every_other_pod_reply_unchanged(text: str) -> None:
+    from kiro_crew.mcp_tools import app_tools
+
+    assert app_tools._text_answer("pod_ls", {"text": text}) == text
 
 
 @pytest.mark.asyncio
@@ -542,7 +632,7 @@ async def test_pod_up_tool_names_both_token_limits(monkeypatch: pytest.MonkeyPat
             "session_ttl_secs": 7200,
         },
     )
-    out = await agent_tools.pod_up({"worktree": "kc-wt-1"})
+    out = _text(await agent_tools.pod_up({"worktree": "kc-wt-1"}))
     line = _token_line(out)
     assert "tok-abc123" in line
     assert "use within 5 min" in line
@@ -559,7 +649,7 @@ async def test_pod_up_tool_reads_the_numbers_it_is_given(monkeypatch: pytest.Mon
         "pod_up_response",
         {"ok": True, "port": 7913, "token": "tok-abc123", "link_ttl_secs": 120, "session_ttl_secs": 1800},
     )
-    line = _token_line(await agent_tools.pod_up({"worktree": "kc-wt-1"}))
+    line = _token_line(_text(await agent_tools.pod_up({"worktree": "kc-wt-1"})))
     assert "use within 2 min" in line
     assert "lasts 30 min" in line
 
@@ -580,7 +670,7 @@ async def test_pod_up_tool_names_no_duration_it_was_not_given(
 ) -> None:
     """Without usable windows the line names no duration; a guessed one is the defect."""
     _verb(monkeypatch, "pod_up_response", {"ok": True, "port": 7913, "token": "tok-abc123", **extra})
-    line = _token_line(await agent_tools.pod_up({"worktree": "kc-wt-1"}))
+    line = _token_line(_text(await agent_tools.pod_up({"worktree": "kc-wt-1"})))
     assert "tok-abc123" in line
     assert "2h" not in line
     assert "straight away" in line
@@ -607,9 +697,9 @@ async def test_pod_up_route_reports_the_windows_of_the_minted_token(
     from unittest.mock import AsyncMock
 
     from backend import repository, runtime, worktree_ops
-    from kiro_crew.dashboard.token_auth import LINK_WINDOW_SECS, generate_token
+    from kiro_crew.dashboard.token_auth import LINK_WINDOW_SECS
 
-    token = generate_token("local-app", ttl_seconds=7200, register_nonce=False)
+    token = _mint_link_token()
     handle = {"name": "kc-wt-1", "status": "up", "port": 7913, "token": token, "ttl": "2h"}
     monkeypatch.setattr(worktree_ops, "_pod_checkout_guard", AsyncMock(return_value=None))
     monkeypatch.setattr(worktree_ops, "_pod_env", lambda: {})
@@ -651,7 +741,7 @@ async def test_pod_up_tool_says_so_when_the_cli_withheld_the_token(
 ) -> None:
     """An empty token is a deliberate refusal to certify the port, not an oversight."""
     _verb(monkeypatch, "pod_up_response", {"ok": True, "name": "kc-wt-1", "port": 7913, "token": ""})
-    out = await agent_tools.pod_up({"worktree": "kc-wt-1"})
+    out = _text(await agent_tools.pod_up({"worktree": "kc-wt-1"}))
     assert "withheld" in out
     assert not out.startswith("Error:")
 
@@ -672,7 +762,7 @@ async def test_pod_up_tool_prints_the_checkout_a_handle_copies(
             "checkout": "/home/u/clone-a/kc-wt-1",
         },
     )
-    out = await agent_tools.pod_up({"worktree": "kc-wt-1"})
+    out = _text(await agent_tools.pod_up({"worktree": "kc-wt-1"}))
     assert "checkout: /home/u/clone-a/kc-wt-1" in out.splitlines()
 
 
@@ -687,7 +777,7 @@ async def test_a_route_refusal_reaches_the_model_as_an_error(
         {"ok": False, "code": "pod_up_failed", "error": "no built dist"},
         status=409,
     )
-    out = await agent_tools.pod_up({"worktree": "kc-wt-1"})
+    out = _text(await agent_tools.pod_up({"worktree": "kc-wt-1"}))
     assert out == "Error: pod up 'kc-wt-1' failed [pod_up_failed]: no built dist"
 
 
@@ -699,7 +789,7 @@ async def test_a_refusal_with_no_json_body_is_not_reported_as_a_pod(
         return web.Response(status=500, text="boom")
 
     monkeypatch.setattr(agent_pod_api, "pod_down_response", _plain)
-    assert (await agent_tools.pod_down({"worktree": "kc-wt-1"})).startswith("Error:")
+    assert _text(await agent_tools.pod_down({"worktree": "kc-wt-1"})).startswith("Error:")
 
 
 @pytest.mark.asyncio
@@ -714,7 +804,7 @@ async def test_pod_status_hands_the_worktree_to_the_verb_as_given(
         {"ok": True, "name": "a b", "status": "down", "port": 7999, "health": 0},
         calls=calls,
     )
-    out = await agent_tools.pod_status({"worktree": "a b&x=1"})
+    out = _text(await agent_tools.pod_status({"worktree": "a b&x=1"}))
     assert calls == [("a b&x=1",)]
     assert out == "Pod `a b`: down port=7999 health=0"
 
@@ -722,7 +812,7 @@ async def test_pod_status_hands_the_worktree_to_the_verb_as_given(
 @pytest.mark.asyncio
 async def test_pod_ls_reports_an_empty_host_plainly(monkeypatch: pytest.MonkeyPatch) -> None:
     _verb(monkeypatch, "pod_list_response", {"ok": True, "pods": []})
-    assert await agent_tools.pod_ls({}) == "No pods are active on this host."
+    assert _text(await agent_tools.pod_ls({})) == "No pods are active on this host."
 
 
 @pytest.mark.asyncio
@@ -738,7 +828,7 @@ async def test_pod_ls_lists_each_pod(monkeypatch: pytest.MonkeyPatch) -> None:
             ],
         },
     )
-    out = await agent_tools.pod_ls({})
+    out = _text(await agent_tools.pod_ls({}))
     assert "kc-wt-1" in out
     assert "kc-wt-2" in out
     assert "2 pod(s) active" in out
@@ -911,7 +1001,7 @@ async def test_pod_restart_tool_hands_the_ceilings_to_restart(
         },
         calls=calls,
     )
-    out = await agent_tools.pod_restart({"worktree": "w", "memory": "16G", "cpu": ""})
+    out = _text(await agent_tools.pod_restart({"worktree": "w", "memory": "16G", "cpu": ""}))
     assert calls == [({"worktree": "w", "memory": "16G"},)]
     assert "restarted with its data kept" in out
     assert "memory=16G cpu=200%" in out
