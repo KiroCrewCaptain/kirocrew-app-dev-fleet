@@ -84,12 +84,17 @@ def _adapt(handler: Callable[..., Awaitable[Any]]) -> Callable[..., Awaitable[An
 
 
 def collect_routes() -> list[tuple[str, str, Callable[..., Awaitable[Any]]]]:
-    """Every in-gateway route the built-in installed, as ``(method, path, handler)``."""
-    from . import agent_pod_api, gateway_routes
+    """Every in-gateway route the built-in installed, as ``(method, path, handler)``.
+
+    The last is the one route the manifest's ``agentTools`` are served on
+    (``agent_tools.py``), which the built-in registers through its own route hook.
+    """
+    from . import agent_pod_api, agent_tools, gateway_routes
 
     recorder = _AppRecorder()
     agent_pod_api.register_routes(recorder)  # type: ignore[arg-type]
     gateway_routes.register_routes(recorder)  # type: ignore[arg-type]
+    recorder.router.add_post(_PREFIX + agent_tools.TOOL_ROUTE, agent_tools.handle_agent_tool)
     return list(recorder.router.added)
 
 

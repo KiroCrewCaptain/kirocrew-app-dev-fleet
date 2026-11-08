@@ -14,8 +14,8 @@ repository. "Gap" means something the built-in gets from Kiro Crew that an
 external app has no public way to get today. Each gap is a Kiro Crew change (or an
 owner decision), not a change here.
 
-**This copy is not ready to pin.** Gap 1 makes Kiro Crew refuse any adoption pin
-for `dev-fleet` today, whatever this tree holds.
+**This copy is not ready to pin.** Until the Kiro Crew change in gap 1 lands, Kiro
+Crew refuses any adoption pin for `dev-fleet`, whatever this tree holds.
 
 ## What carried over unchanged
 
@@ -53,21 +53,24 @@ for `dev-fleet` today, whatever this tree holds.
 
 ## Remaining gaps
 
-1. **Kiro Crew refuses to adopt `dev-fleet` at all (blocks pinning).**
-   `apps/builtin_adoption_checks.py:146` refuses every pin whose name is in
-   `core_named_apps()`, and `mcp_tools/apps.py:535` (`TOOL_APPS`) names `dev-fleet`
-   as the owner of the core MCP tools `pod_up`, `pod_restart`, `pod_down`,
-   `pod_status` and `pod_ls` (their schemas at `mcp_tools/apps.py:172-330`, their
-   titles in `data/mcp_tool_titles.json`). So any pin answers
-   `pinned_feature_unsupported` and the user keeps the built-in. Moving the tools
-   out needs a seam this app can use without changing what an agent sees:
-   manifest `agentTools` lists first-party tools only and requires names starting
-   `dev_fleet_`, so serving them from here would rename them, and the shipped
-   skills (`skills/pod-e2e/SKILL.md`, Kiro Crew's
-   `builtin_skills/kirocrew-dev/kirocrew-worktree-dev/SKILL.md:210`,
-   `builtin_skills/web-verify/SKILL.md:79`) and every agent that calls `pod_up`
-   would break. A Kiro Crew decision: keep the `pod_*` names through a generic
-   alias seam, or rename with a migration.
+1. **The pod tools move to this manifest (closed by the Kiro Crew change on branch
+   `fix/adoption-devfleet-tools`, not yet in the pinned `tests/kirocrew-commit.txt`).**
+   Kiro Crew refused every `dev-fleet` pin because its core MCP table (`TOOL_APPS`
+   in `mcp_tools/apps.py`) owned `pod_up`, `pod_restart`, `pod_down`, `pod_status`
+   and `pod_ls`. That change declares them in the wheel copy's `app.json` and
+   removes the core rows, so `core_named_apps()` no longer names this app. This
+   tree carries the same declaration (`agentTools`, namespace `pod`, so the names
+   agents, skills and policies know are kept) and serves it the same way:
+   `backend/agent_tools.py` runs each tool on the same `agent_pod_api` verb and
+   renders the same text, and `gateway_hooks.py` registers its one route,
+   `POST /api/apps/dev-fleet/agent-tools`, in the gateway (the backend is
+   sandboxed, so a pod verb cannot run there). The keys `namespace`,
+   `timeoutSeconds` and `result` are App Kit seam level 4, so a pin of this tree
+   sets `minAppSdkLevel` to 4; a host below level 2 ignores the block, and a
+   level-2 or level-3 host refuses it. The tests that need a host which reads those
+   keys skip on an older pinned Kiro Crew. Still open for pinning: listing an
+   adopted record's tools at all (`app_agent_tools` reads first-party built-in
+   records only) is a separate Kiro Crew change.
 2. **Host grants come from the wheel's package.** The built-in's
    `host_grants.py` asks the host for: the BUILD rlimit profile for its backend
    (`apps/backend.py:1358-1365`), forwarding `KIROCREW_DEVFLEET_REPO` and
@@ -182,6 +185,7 @@ bundle imports exists on a host before App Kit level 1
 |---|---|---|
 | `test/test_dev_fleet_*.py`, `test/test_devfleet_*.py`, `test/test_sandbox_dev_fleet_live_target.py`, `test/dev_fleet_app_helpers.py`, `test/dev_fleet_server_coverage_helpers.py` | same names under `tests/` | Import path (`backend`). Paths to `app.json` and to the app root follow the new layout. `test_dev_fleet_gateway_routes.py` and `test_dev_fleet_pod_agent_api.py` assert the routes through `backend.hooks.routes` instead of the `BUILTIN_NAMES` loop. The private runtime-gate copy loads inside the `backend` package; the removal-lease subprocess gets this repository on its `PYTHONPATH`. |
 | Kiro Crew's conftest floor | `tests/conftest.py`, `tests/host_service_floor.py`, `tests/git_maintenance_helpers.py`, `tests/redact_scan_helpers.py` | The parts these tests rely on: a throwaway `HOME` and data home, git maintenance off and a fixed identity, the host-service guard (no real `systemctl`/`launchctl`/`schtasks` mutation, no systemd user session for the test tree), `$XDG_CONFIG_HOME` and the launchd paths pinned, and the per-test resets these tests touch (re-exec environment, live config watcher, sandbox launch mark, background loops off, developer overrides), a temp root per pytest process, and the Dev Fleet rows of Kiro Crew's `windows-collect-ignore.txt` (`tests/windows-collect-ignore.txt`). Tests that read the serving package's or the checkout's location ask `kiro_crew.__file__` instead of their own path. |
+| `mcp_tools/apps.py`'s pod tool cases in `test/test_dev_fleet_pod_agent_api.py` | the same file | The tools are this app's now (`backend/agent_tools.py`), so their reply, refusal, wait and bound cases test that module and the `agentTools` declaration; a call goes through the host's real `/api/app-tools/call` handler and route registry to the hook route. |
 | (none) | `tests/test_manifest_contract.py`, `tests/test_spawned_backend.py` | The manifest's parity with the built-in, the skills, the bundle's imports, an adoptable tree, the pinned gap 3; the backend started the way the gateway starts it. |
 | `website/src/apps/dev-fleet/*.test.ts(x)` | `ui/tests/` | Import paths. The SDK stand-ins (`ui/tests/stubs/`) route the scoped client through `fetch`, so the tests keep stubbing `fetch`; they do not apply the host's path fence (gap 3 is pinned on the Python side). Run under happy-dom, as in Kiro Crew. The QA + video case asserts the chat launcher call. The language cases switch the stand-in's locale. The boundary test now pins that `src/` imports only its own modules and the host's. The registry-row case stays with Kiro Crew. |
 
