@@ -20,7 +20,8 @@ Crew refuses any adoption pin for `dev-fleet`, whatever this tree holds.
 ## What carried over unchanged
 
 - `app.json` `name` (`dev-fleet`), `version` (`1.0.0`), `permissions`
-  (`api: ["/apps/dev-fleet/api", "/apps/dev-fleet/api/*"]`, `network`, `terminal`),
+  (`api: ["/apps/dev-fleet/api", "/apps/dev-fleet/api/*"]` plus the host routes
+  of gap 3, `network`, `terminal`),
   `platform`, `defaultEnabled` (`false`), `skills`, and every display field.
   `tests/test_manifest_contract.py` compares them with the built-in's manifest
   (`tests/fixtures/builtin-app.json`).
@@ -85,18 +86,24 @@ Crew refuses any adoption pin for `dev-fleet`, whatever this tree holds.
    generic, app-agnostic way for a first-party app to carry them first.
    `tests/test_dev_fleet_pod_agent_api.py::test_every_route_is_named_in_the_strict_internal_table`
    reads the host's table and goes red the day they vanish.
-3. **The page reaches four host routes outside its grant.** Make live, Restart
-   gateway and Open (the pod token) POST to the gateway's own routes under
-   `/api/apps/dev-fleet/` (`ui/src/devFleetApi.ts` `postGateway`), and the
+3. **The page's host routes are declared (closed by kirodotdev/KiroCrew#36344).** Make
+   live, Restart gateway and Open (the pod token) POST to the gateway's own routes
+   under `/api/apps/dev-fleet/` (`ui/src/devFleetApi.ts` `postGateway`), and the
    backend-down banner reads the app list at `/api/apps` (`backendStatus`). The
    built-in's compiled page called them as dashboard code; the bundle calls them
    through the host's scoped client, which refuses any path outside
-   `permissions.api`, so those three actions fail with the host's refusal and the
-   banner falls back to its generic text. Declaring the paths would widen the
-   grant, which adoption holds back (E9). An owner decision, like Code Review Sage's
-   `/api/source/pull-request`: whether an app's own `/api/apps/<app>/` namespace is
-   implicitly in its grant, or this app declares it. Pinned by
-   `tests/test_manifest_contract.py::test_the_page_reaches_the_gateway_routes_outside_the_grant`.
+   `permissions.api`. Under the owner ruling on Kiro Crew #26967 (an app gets what
+   its built-in already uses, declared in the wheel copy first), kirodotdev/KiroCrew#36344
+   declares them in the built-in's manifest, and this `app.json` declares the same
+   list: the routes as bare entries (none has a child), plus the built-in's
+   `create-release-worktree` (Kiro Crew #33391, which this copy has not ported
+   yet), and the list as `=/api/apps`, the exact entry that change adds at App Kit
+   seam level 7, since a bare `/api/apps` would also cover install, uninstall and
+   every other app's routes. Every existing user's record approves that list
+   before the pin, so adoption is no widening (`permission_refusal` answers
+   `None` on that change). On a host below level 7 the exact entry matches
+   nothing, so there the banner keeps its generic text. Pinned by
+   `tests/test_manifest_contract.py::test_the_grant_covers_the_gateway_routes_and_the_app_list_alone`.
 4. **No public backend seam for spawned app processes (open owner question).** The
    backend imports Kiro Crew's private modules directly, as the built-in did:
    `kiro_crew` (`_facade_mirror`, `dep_sync`, `executors`, `frontend`, `hooks`,
@@ -165,7 +172,7 @@ bundle imports exists on a host before App Kit level 1
 | Built-in | Here |
 |---|---|
 | `fetch('/apps/dev-fleet/api/...')` + `api/client.toApiError` | `ui/src/devFleetApi.ts` over `useAppApi()`, the host's client scoped to `permissions.api`, bound by the root component. A refusal is a `DevFleetApiError` carrying the status, the raw body and the backend's own sentence; an HTML 502/503 reads "temporarily unavailable" and an HTML 401/403 names the access proxy, as the dashboard's client words them (the scoped client's error carries no content type, so the body alone decides) |
-| `api.listApps()` for the backend-down banner, `postGateway` to `/api/apps/dev-fleet/*` | Through the same scoped client, which refuses them (gap 3) |
+| `api.listApps()` for the backend-down banner, `postGateway` to `/api/apps/dev-fleet/*` | Through the same scoped client, under the declared paths (gap 3) |
 | `fetch('/apps/dev-fleet/api/health')` in the restart handshake | `rawHealth` through the scoped client; its 404 is the same "backend gone" reload |
 | `dispatch(addNotification(...))` into the dashboard's notification store | The host's `useNotify()`; the page keeps its own toasts and in-page error notice |
 | `dispatch(setPendingInput(prompt))` + `navigate('/chat?autoSend=1&newSession=1')` for QA + video | `useChatLauncher().openChat({ message, autoSend: true })` |
@@ -186,8 +193,8 @@ bundle imports exists on a host before App Kit level 1
 | `test/test_dev_fleet_*.py`, `test/test_devfleet_*.py`, `test/test_sandbox_dev_fleet_live_target.py`, `test/dev_fleet_app_helpers.py`, `test/dev_fleet_server_coverage_helpers.py` | same names under `tests/` | Import path (`backend`). Paths to `app.json` and to the app root follow the new layout. `test_dev_fleet_gateway_routes.py` and `test_dev_fleet_pod_agent_api.py` assert the routes through `backend.hooks.routes` instead of the `BUILTIN_NAMES` loop. The private runtime-gate copy loads inside the `backend` package; the removal-lease subprocess gets this repository on its `PYTHONPATH`. |
 | Kiro Crew's conftest floor | `tests/conftest.py`, `tests/host_service_floor.py`, `tests/git_maintenance_helpers.py`, `tests/redact_scan_helpers.py` | The parts these tests rely on: a throwaway `HOME` and data home, git maintenance off and a fixed identity, the host-service guard (no real `systemctl`/`launchctl`/`schtasks` mutation, no systemd user session for the test tree), `$XDG_CONFIG_HOME` and the launchd paths pinned, and the per-test resets these tests touch (re-exec environment, live config watcher, sandbox launch mark, background loops off, developer overrides), a temp root per pytest process, and the Dev Fleet rows of Kiro Crew's `windows-collect-ignore.txt` (`tests/windows-collect-ignore.txt`). Tests that read the serving package's or the checkout's location ask `kiro_crew.__file__` instead of their own path. |
 | `mcp_tools/apps.py`'s pod tool cases in `test/test_dev_fleet_pod_agent_api.py` | the same file | The tools are this app's now (`backend/agent_tools.py`), so their reply, refusal, wait and bound cases test that module and the `agentTools` declaration; a call goes through the host's real `/api/app-tools/call` handler and route registry to the hook route. |
-| (none) | `tests/test_manifest_contract.py`, `tests/test_spawned_backend.py` | The manifest's parity with the built-in, the skills, the bundle's imports, an adoptable tree, the pinned gap 3; the backend started the way the gateway starts it. |
-| `website/src/apps/dev-fleet/*.test.ts(x)` | `ui/tests/` | Import paths. The SDK stand-ins (`ui/tests/stubs/`) route the scoped client through `fetch`, so the tests keep stubbing `fetch`; they do not apply the host's path fence (gap 3 is pinned on the Python side). Run under happy-dom, as in Kiro Crew. The QA + video case asserts the chat launcher call. The language cases switch the stand-in's locale. The boundary test now pins that `src/` imports only its own modules and the host's. The registry-row case stays with Kiro Crew. |
+| (none) | `tests/test_manifest_contract.py`, `tests/test_spawned_backend.py` | The manifest's parity with the built-in, the skills, the bundle's imports, an adoptable tree, the declared host routes of gap 3; the backend started the way the gateway starts it. |
+| `website/src/apps/dev-fleet/*.test.ts(x)` | `ui/tests/` | Import paths. The SDK stand-ins (`ui/tests/stubs/`) route the scoped client through `fetch`, so the tests keep stubbing `fetch`; they do not apply the host's path fence (gap 3's declaration is pinned on the Python side). Run under happy-dom, as in Kiro Crew. The QA + video case asserts the chat launcher call. The language cases switch the stand-in's locale. The boundary test now pins that `src/` imports only its own modules and the host's. The registry-row case stays with Kiro Crew. |
 
 ## Fixes since the port
 

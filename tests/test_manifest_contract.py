@@ -191,18 +191,33 @@ def test_no_build_machine_path_is_baked_in():
     assert "node_modules/" not in text
 
 
-def test_the_page_reaches_the_gateway_routes_outside_the_grant():
-    """Pinned gap (PORTING.md): three page actions call the GATEWAY's routes.
+def _matches(entry: str, path: str) -> bool:
+    """Kiro Crew's ``permissions.api`` matcher (``token_auth_app_scope._api_pattern_matches``)."""
+    entry = entry.strip()
+    if entry.startswith("="):
+        return bool(entry[1:]) and path == entry[1:]
+    if entry.endswith("/*"):
+        return path == entry[:-2] or path.startswith(entry[:-1])
+    if entry.endswith("*"):
+        return path.startswith(entry[:-1])
+    return path == entry or path.startswith(entry + "/")
+
+
+def test_the_grant_covers_the_gateway_routes_and_the_app_list_alone():
+    """The page's host calls are declared (PORTING.md, gap 3), and nothing next to them.
 
     Make live, Restart gateway and Open (pod token) POST to ``/api/apps/dev-fleet/``,
-    and the backend-down banner reads ``/api/apps``. The built-in's
-    ``permissions.api`` covers only ``/apps/dev-fleet/api``, so the host's scoped
-    client refuses all four. Declaring them would widen the grant, which adoption
-    holds back. When the grant question is settled, this test changes with it.
+    and the backend-down banner reads ``/api/apps``. kirodotdev/KiroCrew#36344 declares them in
+    the built-in's manifest (the fixture), the list as the exact entry ``=/api/apps``,
+    so the host's scoped client lets them through and adoption is no widening. A bare
+    ``/api/apps`` would also cover install, uninstall and every other app's routes.
     """
     declared = _manifest()["permissions"]["api"]
     for path in ("/api/apps/dev-fleet/make-live", "/api/apps/dev-fleet/restart-gateway",
                  "/api/apps/dev-fleet/pod-token", "/api/apps"):
-        assert not any(path == d or path.startswith(d.rstrip("*").rstrip("/") + "/") for d in declared), path
+        assert any(_matches(d, path) for d in declared), path
+    for path in ("/api/apps/install", "/api/apps/registry/install", "/api/apps/other/enable",
+                 "/api/apps/", "/api/appsx", "/api/sessions"):
+        assert not any(_matches(d, path) for d in declared), path
     text = _bundle_text()
     assert '"/api/apps/dev-fleet"' in text
