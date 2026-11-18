@@ -40,6 +40,24 @@ _REQUEST_TIMEOUT_SECS = 5.0
 #: read never presents a token that expires while the request is in flight. Several
 #: request timeouts, because the deadline is checked before the request is sent.
 _TOKEN_REFRESH_MARGIN_SECS = 30.0
+#: A refused secret exchange holds the next one for its ``Retry-After``, and at least
+#: this backoff over the refusals in a row (1 s doubling to 30 s), never past the max:
+#: a large or malformed header must not switch the fleet view off for a day.
+_EXCHANGE_BACKOFF_FIRST_SECS = 1.0
+_EXCHANGE_BACKOFF_CAP_SECS = 30.0
+_EXCHANGE_MAX_WAIT_SECS = 300.0
+
+
+def _exchange_hold_secs(retry_after: str | None, refusals: int) -> float:
+    """How long to hold the next exchange after the *refusals*-th refusal in a row."""
+    try:
+        header = float(retry_after) if retry_after else 0.0
+    except ValueError:
+        header = 0.0
+    if not math.isfinite(header) or header < 0:
+        header = 0.0
+    backoff = min(_EXCHANGE_BACKOFF_FIRST_SECS * 2 ** min(refusals, 16), _EXCHANGE_BACKOFF_CAP_SECS)
+    return min(max(header, backoff), _EXCHANGE_MAX_WAIT_SECS)
 
 
 class GatewayPointerBroker:
@@ -60,6 +78,8 @@ class GatewayPointerBroker:
         #: Wall-clock instant the token must be re-exchanged by; ``inf`` when the
         #: gateway gave no ``expires_in``, which leaves only the 401/403 re-exchange.
         self._token_due = math.inf
+        self._exchange_refusals = 0
+        self._exchange_not_before = 0.0
         self._cached: live.PointerState | None = None
         self._cached_at = 0.0
         self._lock = asyncio.Lock()
@@ -121,6 +141,12 @@ class GatewayPointerBroker:
         # fresh after a resume the gateway already counts as expired.
         if self._token and time.time() < self._token_due:
             return self._token
+        wait = self._exchange_not_before - time.monotonic()
+        if wait > 0:
+            # No request: an app whose secret went stale must not ask on every read.
+            raise live.PointerUnavailable(
+                f"app token exchange was refused; next attempt in {math.ceil(wait)}s"
+            )
         # Taken before the request, so the deadline can only be early: the gateway
         # mints the token after this instant.
         sent_at = time.time()
@@ -129,6 +155,9 @@ class GatewayPointerBroker:
             headers={"X-App-Secret": self._secret},
         ) as resp:
             if resp.status != 200:
+                hold = _exchange_hold_secs(resp.headers.get("Retry-After"), self._exchange_refusals)
+                self._exchange_refusals += 1
+                self._exchange_not_before = time.monotonic() + hold
                 raise live.PointerUnavailable(f"app token exchange failed with HTTP {resp.status}")
             data = await resp.json(content_type=None)
         token = data.get("token") if isinstance(data, dict) else None
@@ -141,6 +170,8 @@ class GatewayPointerBroker:
             and math.isfinite(expires_in)
             and expires_in > 0
         )
+        self._exchange_refusals = 0
+        self._exchange_not_before = 0.0
         self._token = token
         self._token_due = sent_at + expires_in - _TOKEN_REFRESH_MARGIN_SECS if usable else math.inf
         return token
