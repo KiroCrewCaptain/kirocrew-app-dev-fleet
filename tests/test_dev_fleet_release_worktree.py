@@ -40,6 +40,7 @@ from git_maintenance_helpers import git_maintenance_off_entries
 
 from backend import release_worktree, repository, runtime
 from kiro_crew.dashboard.handlers import worktree as dash_worktree
+from kiro_crew.testing.synthetic_credentials import github_classic
 from kiro_crew.testing.wait import FALLBACK_TIMEOUT_SECS, async_wait_until
 
 requires_git = pytest.mark.skipif(shutil.which("git") is None, reason="git not available")
@@ -1378,7 +1379,7 @@ async def test_real_git_a_credential_shaped_filter_name_is_redacted_from_the_ref
     home.mkdir()
     env = _fixture_env(home)
     clone = _origin_with_tag(tmp_path, env, "v0.10.0")
-    token = "ghp_" + "a" * 36
+    token = github_classic(seed=71)
     assert _git(env, clone, "config", "--local", f"filter.{token}.smudge", "cat").returncode == 0
     monkeypatch.setattr(repository, "_repo", lambda: str(clone))
 

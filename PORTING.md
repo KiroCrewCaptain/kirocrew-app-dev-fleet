@@ -204,7 +204,7 @@ bundle imports exists on a host before App Kit level 1
 
 This tree was cut from Kiro Crew `main` at
 `6d07df11cfb64f4c3fda0466165c7a0ba3efe748`. Every change the built-in got after
-that commit, up to `46f62deab7468ec5d0ba153556a4f545b1966ec1`, is carried here, the
+that commit, up to `3173b59929757f357e50dda7c44021b4f7af225a`, is carried here, the
 backend, skills and tests through the same port changes as above, so each backend
 module differs from the wheel copy's only in its imports. They ship as `1.0.1`; a
 first adoption pin's version equals the wheel copy's, so the Kiro Crew change that
@@ -222,11 +222,29 @@ pins this release sets the wheel copy to `1.0.1` with it.
 | kirodotdev/KiroCrew#35199 | `pod_up` takes an optional `env` (`KIROCREW_KIRO_BIN` only) to point one pod at a test-double kiro-cli | `agent_pod_api.py`, `agent_tools.py`, `worktree_ops_pods.py`, `app.json`, `skills/pod-e2e/SKILL.md` |
 | kirodotdev/KiroCrew#31124 | A clean worktree whose pull request was closed can be pruned | `fleet_state.py`, `worktree_ops.py` |
 | kirodotdev/KiroCrew#32503 | A malformed request body is refused with a `code` as well as a sentence | `http_api.py` |
+| kirodotdev/KiroCrew#37740 | The pod tools check their worktree argument, and the pod token is printed once | `agent_tools.py`, `skills/pod-e2e/SKILL.md` |
+| kirodotdev/KiroCrew#37004 | The page's liveness poll no longer spawns a `systemctl` probe on every read | `http_api.py`, `live.py`, `live_service.py`, `server.py` |
+| kirodotdev/KiroCrew#38362 | Make Live finds the live gateway unit the installer writes (`kirocrew.service` or `kirocrew-gateway.service`) | `gateway_service.py`, `live.py`, `live_plan.py`, `live_service.py` |
+| kirodotdev/KiroCrew#38909 | The demo-recording skill refuses narration on Windows before any speech call | `skills/feature-demo-recording/references/` |
+| kirodotdev/KiroCrew#39084 | The pointer broker renews its app token before it expires | `pointer_broker.py` |
 
 Test-only changes carried with them: kirodotdev/KiroCrew#31863 (synthetic credentials,
 read here from `kiro_crew.testing.synthetic_credentials`), kirodotdev/KiroCrew#33542 and
 kirodotdev/KiroCrew#37263 (the host notice's action row, mirrored in
-`ui/tests/stubs/app-sdk-ui.tsx`). Kiro Crew's `test_dev_fleet_permission_parity.py`
+`ui/tests/stubs/app-sdk-ui.tsx`), and kirodotdev/KiroCrew#37408 (checksummed GitHub
+tokens in two redaction cases) and kirodotdev/KiroCrew#38049 (the shutdown-flag reset and
+the shared service-probe case in `tests/test_dev_fleet_health_identity.py`). Kiro Crew's
+`test_feature_demo_narrate_platform.py` (#38909) stays with Kiro Crew, as the skill's
+other script tests do. Test-only wording and scratch-path changes from
+kirodotdev/KiroCrew#36365, #37433 and #38042 are not carried yet; none of them fails at
+the pinned commit.
+
+Host requirement: since #38362, `gateway_service.py` reads
+`platform_compat.POSIX_DEFAULT_BIN_DIRS`, which Kiro Crew added in the same change. A
+host older than `3173b59929757f357e50dda7c44021b4f7af225a` lacks it, and a Make Live
+cutover there fails with `AttributeError`. `minKiroCrewVersion` still says `0.12.0`;
+raising it to the first release that contains that commit is the pin's decision. Kiro Crew's
+`test_dev_fleet_permission_parity.py`
 stays with Kiro Crew: it checks the wheel copy, and `tests/test_manifest_contract.py`
 checks this copy's list against it.
 
