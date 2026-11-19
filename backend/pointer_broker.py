@@ -22,6 +22,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import math
 import time
 from typing import Any
 
@@ -35,6 +36,27 @@ logger = logging.getLogger("kirocrew.app.dev-fleet.broker")
 #: through the broker than it was when the backend read the file itself.
 _CACHE_TTL_SECS = live._LIVE_TTL
 _REQUEST_TIMEOUT_SECS = 5.0
+#: A refused secret exchange holds the next one for its ``Retry-After``, and at least
+#: this backoff over the refusals in a row (1 s doubling to 30 s), never past the max:
+#: a large or malformed header must not switch the fleet view off for a day.
+_EXCHANGE_BACKOFF_FIRST_SECS = 1.0
+_EXCHANGE_BACKOFF_CAP_SECS = 30.0
+_EXCHANGE_MAX_WAIT_SECS = 300.0
+#: The answers that refuse the secret. Only these hold the next exchange: a 5xx says
+#: nothing about the secret, so the next read asks again.
+_EXCHANGE_REFUSALS = frozenset({401, 403, 429})
+
+
+def _exchange_hold_secs(retry_after: str | None, refusals: int) -> float:
+    """How long to hold the next exchange after the *refusals*-th refusal in a row."""
+    try:
+        header = float(retry_after) if retry_after else 0.0
+    except ValueError:
+        header = 0.0
+    if not math.isfinite(header) or header < 0:
+        header = 0.0
+    backoff = min(_EXCHANGE_BACKOFF_FIRST_SECS * 2 ** min(refusals, 16), _EXCHANGE_BACKOFF_CAP_SECS)
+    return min(max(header, backoff), _EXCHANGE_MAX_WAIT_SECS)
 
 
 class GatewayPointerBroker:
@@ -52,6 +74,8 @@ class GatewayPointerBroker:
         self._secret = app_secret
         self._app = app_name
         self._token: str | None = None
+        self._exchange_refusals = 0
+        self._exchange_not_before = 0.0
         self._cached: live.PointerState | None = None
         self._cached_at = 0.0
         self._lock = asyncio.Lock()
@@ -110,16 +134,29 @@ class GatewayPointerBroker:
     async def _ensure_token(self) -> str:
         if self._token:
             return self._token
+        wait = self._exchange_not_before - time.monotonic()
+        if wait > 0:
+            # No request: an app whose secret went stale must not ask on every read.
+            raise live.PointerUnavailable(
+                f"app token exchange was refused; next attempt in {math.ceil(wait)}s"
+            )
         async with self._client().post(
             f"{self._base}/api/apps/{self._app}/token",
             headers={"X-App-Secret": self._secret},
         ) as resp:
             if resp.status != 200:
+                if resp.status in _EXCHANGE_REFUSALS:
+                    retry_after = resp.headers.get("Retry-After")
+                    hold = _exchange_hold_secs(retry_after, self._exchange_refusals)
+                    self._exchange_refusals += 1
+                    self._exchange_not_before = time.monotonic() + hold
                 raise live.PointerUnavailable(f"app token exchange failed with HTTP {resp.status}")
             data = await resp.json(content_type=None)
         token = data.get("token") if isinstance(data, dict) else None
         if not isinstance(token, str) or not token:
             raise live.PointerUnavailable("app token exchange returned no token")
+        self._exchange_refusals = 0
+        self._exchange_not_before = 0.0
         self._token = token
         return token
 
