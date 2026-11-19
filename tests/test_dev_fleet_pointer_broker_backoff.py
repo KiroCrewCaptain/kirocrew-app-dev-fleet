@@ -97,6 +97,23 @@ async def test_refusals_without_a_header_back_off_and_a_grant_resets(clock) -> N
         await client.close()
 
 
+@pytest.mark.asyncio
+async def test_a_server_error_holds_nothing(clock) -> None:
+    app, seen = _gateway([(503, {}), (200, {})])
+    client = TestClient(TestServer(app))
+    await client.start_server()
+    broker = pointer_broker.GatewayPointerBroker(
+        origin=f"http://127.0.0.1:{client.server.port}", app_secret="s"
+    )
+    try:
+        assert (await _read(broker)).endswith("HTTP 503")
+        assert await _read(broker) == "/wt/live", "a 5xx says nothing about the secret"
+        assert seen["exchanges"] == 2
+    finally:
+        await broker.aclose()
+        await client.close()
+
+
 @pytest.mark.parametrize(
     ("header", "refusals", "expected"),
     [

@@ -46,6 +46,9 @@ _TOKEN_REFRESH_MARGIN_SECS = 30.0
 _EXCHANGE_BACKOFF_FIRST_SECS = 1.0
 _EXCHANGE_BACKOFF_CAP_SECS = 30.0
 _EXCHANGE_MAX_WAIT_SECS = 300.0
+#: The answers that refuse the secret. Only these hold the next exchange: a 5xx says
+#: nothing about the secret, so the next read asks again.
+_EXCHANGE_REFUSALS = frozenset({401, 403, 429})
 
 
 def _exchange_hold_secs(retry_after: str | None, refusals: int) -> float:
@@ -155,9 +158,11 @@ class GatewayPointerBroker:
             headers={"X-App-Secret": self._secret},
         ) as resp:
             if resp.status != 200:
-                hold = _exchange_hold_secs(resp.headers.get("Retry-After"), self._exchange_refusals)
-                self._exchange_refusals += 1
-                self._exchange_not_before = time.monotonic() + hold
+                if resp.status in _EXCHANGE_REFUSALS:
+                    retry_after = resp.headers.get("Retry-After")
+                    hold = _exchange_hold_secs(retry_after, self._exchange_refusals)
+                    self._exchange_refusals += 1
+                    self._exchange_not_before = time.monotonic() + hold
                 raise live.PointerUnavailable(f"app token exchange failed with HTTP {resp.status}")
             data = await resp.json(content_type=None)
         token = data.get("token") if isinstance(data, dict) else None
