@@ -222,6 +222,7 @@ pins this release sets the wheel copy to `1.0.1` with it.
 | kirodotdev/KiroCrew#35199 | `pod_up` takes an optional `env` (`KIROCREW_KIRO_BIN` only) to point one pod at a test-double kiro-cli | `agent_pod_api.py`, `agent_tools.py`, `worktree_ops_pods.py`, `app.json`, `skills/pod-e2e/SKILL.md` |
 | kirodotdev/KiroCrew#31124 | A clean worktree whose pull request was closed can be pruned | `fleet_state.py`, `worktree_ops.py` |
 | kirodotdev/KiroCrew#32503 | A malformed request body is refused with a `code` as well as a sentence | `http_api.py` |
+| kirodotdev/KiroCrew#36280 | **Restore installed build** puts the dashboard back on the build the installer put on the machine after Make Live; on a host it cannot restart, the restart command stays on the page until the gateway restarts. Needs the same change's `kiro_crew.service.live_target` (`is_pinned`, the cleared pointer document), so `tests/kirocrew-commit.txt` names that change's head | `installer_launcher.py`, `restore_installed.py`, `live.py`, `gateway_routes.py`, `gateway_service.py`, `pointer_broker.py`, `fleet_state.py`, `http_api.py`, the page, `ui/i18n/*.json` |
 
 Test-only changes carried with them: kirodotdev/KiroCrew#31863 (synthetic credentials,
 read here from `kiro_crew.testing.synthetic_credentials`), kirodotdev/KiroCrew#33542 and
