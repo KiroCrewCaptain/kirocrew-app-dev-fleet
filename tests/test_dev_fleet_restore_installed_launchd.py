@@ -351,6 +351,28 @@ async def test_a_foreground_mac_with_no_launcher_clears_only_the_pointer(monkeyp
     assert not host["launcher"].exists()
 
 
+@pytest.mark.asyncio
+async def test_an_agent_that_runs_the_binary_directly_clears_only_the_pointer(monkeypatch, host):
+    # An agent installed by an older build never execs the launcher, so Make Live
+    # pinned only the pointer and recorded nothing; Restore needs no record either.
+    _stub_make_live(
+        monkeypatch,
+        host["wt"],
+        platform="darwin",
+        pointer_dir=host["pointer"].parent,
+        unit_status="agent_not_indirected",
+    )
+    live_target.write_target(host["wt"])
+    host["launcher"].unlink()
+    _launchctl(monkeypatch)
+
+    res = await restore_installed._restore_installed()
+
+    assert res["ok"] is True and res["plan"]["rewrites_launcher"] is False
+    assert host["pointer"].read_text() == live_target.NO_TARGET_DOCUMENT
+    assert not host["launcher"].exists()
+
+
 def _tamper_mode(host):
     host["record"].chmod(0o644)
 

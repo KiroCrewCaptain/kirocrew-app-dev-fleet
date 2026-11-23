@@ -74,6 +74,8 @@ async def _unavailable_fleet(body: dict) -> web.Response:
             **body,
             "live_target_pinned": state.pinned,
             "restore_restart_pending": state.restore_restart_pending,
+            # The pending notice names the command; the page has no fallback of its own.
+            "manual_restart": live._manual_restart_command(),
         }
     except live.PointerUnavailable:
         pass

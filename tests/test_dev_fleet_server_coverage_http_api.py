@@ -123,6 +123,7 @@ async def test_fleet_handler_reports_discovery_error(monkeypatch):
         "error": "no git",
         "live_target_pinned": False,
         "restore_restart_pending": False,
+        "manual_restart": http_api.live._manual_restart_command(),
     }
 
 

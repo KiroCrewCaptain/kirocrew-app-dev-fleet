@@ -2654,8 +2654,8 @@ function i18nNodes(key, components) {
 }
 // src/DevFleetPageNotices.tsx
 /** The notices between the page header and the worktree table. */
-function DevFleetPageNotices({ fleet, diskFailed, diskError, actionError, actionErrorRef, dismissActionError, gatewayError, setGatewayError, setDismissedUndoKey, gatewayMutating, makeLive, restoreInstalled, restorePending, restoreBannerDismissed, setRestoreBannerDismissed, wts, running, needsProv, undoTarget, undoCurrent, undoKey, showUndoBanner, podsAvailable, podsReason, gatewayReason, servingReason, noFleet, diskGb }) {
-	const restartCmd = fleet?.manual_restart || "kirocrew restart";
+function DevFleetPageNotices({ fleet, diskFailed, diskError, actionError, actionErrorRef, dismissActionError, gatewayError, setGatewayError, setDismissedUndoKey, gatewayMutating, makeLive, restoreInstalled, restorePending, restoreBannerDismissed, setRestoreBannerDismissed, restoreRestartCmd, wts, running, needsProv, undoTarget, undoCurrent, undoKey, showUndoBanner, podsAvailable, podsReason, gatewayReason, servingReason, noFleet, diskGb }) {
+	const restartCmd = fleet?.manual_restart ?? restoreRestartCmd;
 	const restartCode = /* @__PURE__ */ jsx("code", {
 		className: "break-all rounded bg-bg px-1.5 py-0.5 text-text-strong select-text",
 		children: restartCmd
@@ -3106,6 +3106,7 @@ function DevFleetPage() {
 	const [gatewayError, setGatewayError] = useState(null);
 	const [restoreStaged, setRestoreStaged] = useState(false);
 	const [restoreBannerDismissed, setRestoreBannerDismissed] = useState(false);
+	const [restoreRestartCmd, setRestoreRestartCmd] = useState(null);
 	const restorePending = restoreStaged || fleet?.restore_restart_pending === true;
 	useEffect(() => {
 		if (fleet?.restore_restart_pending === true) setRestoreStaged(false);
@@ -4052,6 +4053,7 @@ function DevFleetPage() {
 			}
 			if (r.staged_only) {
 				setRestoreBannerDismissed(false);
+				setRestoreRestartCmd(r.manual_restart ?? null);
 				setRestoreStaged(true);
 				setFlag(flag, false);
 				invalidateFleet();
@@ -4706,6 +4708,7 @@ function DevFleetPage() {
 						restorePending,
 						restoreBannerDismissed,
 						setRestoreBannerDismissed,
+						restoreRestartCmd,
 						wts,
 						running,
 						needsProv,

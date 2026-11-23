@@ -703,6 +703,7 @@ async def test_fleet_handler_reports_needs_setup_without_an_error():
                 "needs_setup": True,
                 "live_target_pinned": False,
                 "restore_restart_pending": False,
+                "manual_restart": live_mod._manual_restart_command(),
             }
 
 

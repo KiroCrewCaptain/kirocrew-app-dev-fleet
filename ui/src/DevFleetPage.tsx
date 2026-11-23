@@ -248,6 +248,7 @@ export default function DevFleetPage() {
   // restore_restart_pending (server state, cleared by the restart) takes over.
   const [restoreStaged, setRestoreStaged] = useState(false)
   const [restoreBannerDismissed, setRestoreBannerDismissed] = useState(false)
+  const [restoreRestartCmd, setRestoreRestartCmd] = useState<string | null>(null)
   const restorePending = restoreStaged || fleet?.restore_restart_pending === true
   useEffect(() => {
     if (fleet?.restore_restart_pending === true) setRestoreStaged(false)
@@ -1099,6 +1100,7 @@ export default function DevFleetPage() {
     try {
       const r = await api.postGateway<{
         ok?: boolean; error?: string; start_id?: string | null; staged_only?: boolean; notice?: string
+        manual_restart?: string
       }>('/restore-installed', {})
       if (!r?.ok) {
         const msg = r?.error || i18nT('pages.devFleetPage.restore_installed_build_failed')
@@ -1106,6 +1108,7 @@ export default function DevFleetPage() {
       }
       if (r.staged_only) {
         setRestoreBannerDismissed(false)
+        setRestoreRestartCmd(r.manual_restart ?? null)
         setRestoreStaged(true)
         setFlag(flag, false)
         invalidateFleet()
@@ -1466,7 +1469,7 @@ export default function DevFleetPage() {
               actionErrorRef={actionErrorRef} dismissActionError={dismissActionError}
               gatewayError={gatewayError} setGatewayError={setGatewayError}
               setDismissedUndoKey={setDismissedUndoKey} gatewayMutating={gatewayMutating}
-              makeLive={makeLive} restoreInstalled={restoreInstalled} restorePending={restorePending} restoreBannerDismissed={restoreBannerDismissed} setRestoreBannerDismissed={setRestoreBannerDismissed} wts={wts} running={running} needsProv={needsProv}
+              makeLive={makeLive} restoreInstalled={restoreInstalled} restorePending={restorePending} restoreBannerDismissed={restoreBannerDismissed} setRestoreBannerDismissed={setRestoreBannerDismissed} restoreRestartCmd={restoreRestartCmd} wts={wts} running={running} needsProv={needsProv}
               undoTarget={undoTarget} undoCurrent={undoCurrent} undoKey={undoKey}
               showUndoBanner={showUndoBanner} podsAvailable={podsAvailable} podsReason={podsReason}
               gatewayReason={gatewayReason} servingReason={servingReason} noFleet={noFleet}

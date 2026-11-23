@@ -19,7 +19,7 @@ import { iconLabel } from './DevFleetPageRow'
 /** The notices between the page header and the worktree table. */
 export function DevFleetPageNotices({
   fleet, diskFailed, diskError, actionError, actionErrorRef, dismissActionError, gatewayError,
-  setGatewayError, setDismissedUndoKey, gatewayMutating, makeLive, restoreInstalled, restorePending, restoreBannerDismissed, setRestoreBannerDismissed, wts, running, needsProv, undoTarget,
+  setGatewayError, setDismissedUndoKey, gatewayMutating, makeLive, restoreInstalled, restorePending, restoreBannerDismissed, setRestoreBannerDismissed, restoreRestartCmd, wts, running, needsProv, undoTarget,
   undoCurrent, undoKey, showUndoBanner, podsAvailable, podsReason, gatewayReason, servingReason, noFleet,
   diskGb,
 }: {
@@ -38,6 +38,7 @@ export function DevFleetPageNotices({
   restorePending: boolean
   restoreBannerDismissed: boolean
   setRestoreBannerDismissed: Dispatch<SetStateAction<boolean>>
+  restoreRestartCmd: string | null
   wts: Worktree[]
   running: number
   needsProv: number
@@ -52,7 +53,8 @@ export function DevFleetPageNotices({
   noFleet: boolean
   diskGb: string
 }) {
-  const restartCmd = fleet?.manual_restart || 'kirocrew restart'
+  // The backend names the command on every fleet payload, the unavailable ones too.
+  const restartCmd = fleet?.manual_restart ?? restoreRestartCmd
   const restartCode = (
     <code className="break-all rounded bg-bg px-1.5 py-0.5 text-text-strong select-text">{restartCmd}</code>
   )
