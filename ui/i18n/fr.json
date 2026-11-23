@@ -291,7 +291,7 @@
       "restore_installed_build_failed": "Impossible de restaurer la version installée",
       "restore_installed_build_stop_worktree": "Ne plus utiliser le worktree",
       "restore_installed_pending_notice": "Worktree libéré — exécute <cmd/> pour terminer",
-      "restore_installed_restart_pending": "Redémarre pour finir de restaurer la version installée : <cmd/>",
+      "restore_installed_restart_pending": "Redémarre pour finir de restaurer la version installée : <cmd/>",
       "undo_to_name": "Revenir à {{name}}",
       "up_to_date_with_main": "à jour avec main",
       "updated": "Mis à jour",

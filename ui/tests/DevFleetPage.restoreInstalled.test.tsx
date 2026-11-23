@@ -95,6 +95,37 @@ describe('DevFleetPage Restore installed build', () => {
     expect(within(row).queryByLabelText('Dismiss')).toBeNull()
   })
 
+  it('drops the restore instruction once a later Make Live pins the pointer again', async () => {
+    let fleet: object = fleetWith({ live_target_pinned: true, gateway_service_active: false })
+    vi.spyOn(globalThis, 'fetch').mockImplementation((url, opts) => {
+      const u = typeof url === 'string' ? url : (url as Request).url
+      if (u.includes('/restore-installed') && opts?.method === 'POST') {
+        if (String(opts.body).includes('dry_run')) {
+          return Promise.resolve(new Response(JSON.stringify({ ok: true, dry_run: true, plan: { restart: 'manual' } }), { status: 200 }))
+        }
+        return Promise.resolve(new Response(JSON.stringify({ ok: true, restored: true, staged_only: true }), { status: 200 }))
+      }
+      if (u.includes('/make-live') && opts?.method === 'POST') {
+        fleet = fleetWith({ live_target_pinned: true, restore_restart_pending: false })
+        return Promise.resolve(new Response(JSON.stringify({ ok: true, staged_only: true }), { status: 200 }))
+      }
+      if (u.includes('/fleet')) return Promise.resolve(new Response(JSON.stringify(fleet), { status: 200 }))
+      return Promise.resolve(new Response(JSON.stringify({ total_mb: 51200 }), { status: 200 }))
+    })
+    renderWithProviders(<DevFleetPage />, { route: '/dev-fleet' })
+    const note = await screen.findByTestId('restore-installed-build')
+    fireEvent.click(within(note).getByRole('button', { name: 'Restore installed build' }))
+    let dialog = await screen.findByRole('dialog')
+    await act(async () => { fireEvent.click(within(dialog).getByRole('button', { name: 'Stop using worktree' })) })
+    await screen.findByTestId('restore-installed-pending')
+
+    fireEvent.click(screen.getAllByRole('button', { name: /Make live/ })[0])
+    dialog = await screen.findByRole('dialog')
+    await act(async () => { fireEvent.click(within(dialog).getAllByRole('button', { name: /Make live/ }).at(-1)!) })
+    await waitFor(() => expect(screen.queryByTestId('restore-installed-pending')).toBeNull())
+    expect(await screen.findByTestId('restore-installed-build')).toBeInTheDocument()
+  })
+
   it('keeps the restart command from server state across a reload until the restart', async () => {
     serve(fleetWith({ live_target_pinned: false, restore_restart_pending: true }))
     renderWithProviders(<DevFleetPage />, { route: '/dev-fleet' })

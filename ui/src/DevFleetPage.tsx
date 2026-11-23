@@ -1024,6 +1024,9 @@ export default function DevFleetPage() {
           : 'pages.devFleetPage.make_live_failed')
         notify(msg, { type: 'error' }); setGatewayError(msg); setFlag(w.name + ':makelive', false); return
       }
+      // Any accepted cutover pins the pointer again, so a pending Restore's
+      // instruction no longer applies (the server's flag already says so).
+      setRestoreStaged(false)
       // Stage cancelled: the pointer is re-pinned at the running checkout and
       // no process is coming or going, so the restart overlay and the identity
       // handshake must both be skipped — waiting would strand the user on the
