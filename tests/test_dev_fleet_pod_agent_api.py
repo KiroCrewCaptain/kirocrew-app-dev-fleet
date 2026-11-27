@@ -25,6 +25,8 @@ from aiohttp import web
 from backend import agent_pod_api, agent_tools
 
 _POD_TOOLS = ("pod_up", "pod_restart", "pod_down", "pod_status", "pod_ls")
+#: Every declared tool: the five lifecycle verbs, the API call and the provision run.
+_ALL_POD_TOOLS = (*_POD_TOOLS, "pod_api", "pod_provision_start", "pod_provision_status")
 
 
 def _host_reads_tool_keys() -> bool:
@@ -459,13 +461,34 @@ def _verb(
 def test_pod_tools_are_declared_with_a_verb_each() -> None:
     """A declaration with no verb advertises a tool that cannot run."""
     declared = _declared()
-    assert set(declared) == set(_POD_TOOLS) == set(agent_tools.TOOLS)
-    for name in _POD_TOOLS:
+    assert set(declared) == set(_ALL_POD_TOOLS) == set(agent_tools.TOOLS)
+    for name in _ALL_POD_TOOLS:
         assert declared[name]["result"] == "text", name
         assert declared[name]["maxResultChars"] == 60_000, name
 
 
 @_NEW_HOST
+def test_lifecycle_declarations_stay_compatible_with_adopted_hosts() -> None:
+    """Adopted hosts keep a tool only when it equals the wheel copy.
+
+    These declarations change only together with an app-repository release.
+    """
+    import hashlib
+
+    entries = _declared()
+    expected = {
+        "pod_up": "6930695aa1f9656c3d527cddfe97802545b577e1a6c3c638fe2cb19eedc71d51",
+        "pod_restart": "66715205213235cdf7fefade751ea7068456db4e325edc0e25c97fd9c8567cca",
+        "pod_down": "84543d0dbecbd1e5049fc96a01e30e1a2e5ba07f6e8559cb8ab70eb48a16b19f",
+        "pod_status": "67a8547b106ff56e42f46112cd72e43041519085db18fdbeaa930700b4a68872",
+        "pod_ls": "f33c729f38257745e1ddd450e28f3ca0133baeeafc7f198f5cd8e3054c34b552",
+    }
+    for name, digest in expected.items():
+        assert (
+            hashlib.sha256(json.dumps(entries[name], sort_keys=True).encode()).hexdigest() == digest
+        ), name
+
+
 def test_pod_tools_keep_the_core_validation_bounds() -> None:
     """The bounds the core tool held are the declaration's, so the same calls are refused."""
     from kiro_crew.apps import app_agent_tools
@@ -503,6 +526,9 @@ def test_pod_tools_wait_as_long_as_the_core_tools_did() -> None:
         "pod_down": 120,
         "pod_status": 45,
         "pod_ls": 45,
+        "pod_api": 60,
+        "pod_provision_start": 60,
+        "pod_provision_status": 30,
     }
 
 
@@ -1051,7 +1077,7 @@ def test_the_declaration_validates_on_a_host_that_reads_it() -> None:
     block = AgentToolsConfig.from_value(_manifest()["agentTools"])
     assert block.validate("dev-fleet") == []
     assert block.namespace == "pod"
-    assert [t.name for t in block.tools] == list(_POD_TOOLS)
+    assert [t.name for t in block.tools] == list(_ALL_POD_TOOLS)
 
 
 @_NEW_HOST
